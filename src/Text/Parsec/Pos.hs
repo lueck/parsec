@@ -16,11 +16,11 @@
 -----------------------------------------------------------------------------
 
 module Text.Parsec.Pos
-    ( SourceName, Line, Column
+    ( SourceName, Line, Column, Index
     , SourcePos
-    , sourceLine, sourceColumn, sourceName
-    , incSourceLine, incSourceColumn
-    , setSourceLine, setSourceColumn, setSourceName
+    , sourceLine, sourceColumn, sourceIndex, sourceName
+    , incSourceLine, incSourceColumn, incSourceIndex
+    , setSourceLine, setSourceColumn, setSourceIndex, setSourceName
     , newPos, initialPos
     , updatePosChar, updatePosString
     ) where
@@ -34,68 +34,84 @@ import Data.Typeable (Typeable)
 type SourceName = String
 type Line       = Int
 type Column     = Int
+type Index      = Int
 
 -- | The abstract data type @SourcePos@ represents source positions. It
 -- contains the name of the source (i.e. file name), a line number and
 -- a column number. @SourcePos@ is an instance of the 'Show', 'Eq' and
 -- 'Ord' class.
 
-data SourcePos  = SourcePos SourceName !Line !Column
+data SourcePos  = SourcePos SourceName !Line !Column !Index
     deriving ( Eq, Ord, Data, Typeable)
 
 -- | Create a new 'SourcePos' with the given source name,
 -- line number and column number.
 
-newPos :: SourceName -> Line -> Column -> SourcePos
-newPos name line column
-    = SourcePos name line column
+newPos :: SourceName -> Line -> Column -> Index -> SourcePos
+newPos name line column index
+    = SourcePos name line column index
 
 -- | Create a new 'SourcePos' with the given source name,
 -- and line number and column number set to 1, the upper left.
 
 initialPos :: SourceName -> SourcePos
 initialPos name
-    = newPos name 1 1
+    = newPos name 1 1 1
 
 -- | Extracts the name of the source from a source position.
 
 sourceName :: SourcePos -> SourceName
-sourceName (SourcePos name _line _column) = name
+sourceName (SourcePos name _line _column _index) = name
 
 -- | Extracts the line number from a source position.
 
 sourceLine :: SourcePos -> Line
-sourceLine (SourcePos _name line _column) = line
+sourceLine (SourcePos _name line _column _index) = line
 
 -- | Extracts the column number from a source position.
 
 sourceColumn :: SourcePos -> Column
-sourceColumn (SourcePos _name _line column) = column
+sourceColumn (SourcePos _name _line column _index) = column
+
+-- | Extracts the index from a source position.
+
+sourceIndex :: SourcePos -> Column
+sourceIndex (SourcePos _name _line _column index) = index
 
 -- | Increments the line number of a source position.
 
 incSourceLine :: SourcePos -> Line -> SourcePos
-incSourceLine (SourcePos name line column) n = SourcePos name (line+n) column
+incSourceLine (SourcePos name line column index) n = SourcePos name (line+n) column index
 
 -- | Increments the column number of a source position.
 
 incSourceColumn :: SourcePos -> Column -> SourcePos
-incSourceColumn (SourcePos name line column) n = SourcePos name line (column+n)
+incSourceColumn (SourcePos name line column index) n = SourcePos name line (column+n) index
+
+-- | Increments the index of a source position.
+
+incSourceIndex :: SourcePos -> Column -> SourcePos
+incSourceIndex (SourcePos name line column index) n = SourcePos name line column (index+n)
 
 -- | Set the name of the source.
 
 setSourceName :: SourcePos -> SourceName -> SourcePos
-setSourceName (SourcePos _name line column) n = SourcePos n line column
+setSourceName (SourcePos _name line column index) n = SourcePos n line column index
 
 -- | Set the line number of a source position.
 
 setSourceLine :: SourcePos -> Line -> SourcePos
-setSourceLine (SourcePos name _line column) n = SourcePos name n column
+setSourceLine (SourcePos name _line column index) n = SourcePos name n column index
 
 -- | Set the column number of a source position.
 
 setSourceColumn :: SourcePos -> Column -> SourcePos
-setSourceColumn (SourcePos name line _column) n = SourcePos name line n
+setSourceColumn (SourcePos name line _column index) n = SourcePos name line n index
+
+-- | Set the index of a source position.
+
+setSourceIndex :: SourcePos -> Column -> SourcePos
+setSourceIndex (SourcePos name line column _index) n = SourcePos name line column n
 
 -- | The expression @updatePosString pos s@ updates the source position
 -- @pos@ by calling 'updatePosChar' on every character in @s@, ie.
@@ -113,14 +129,14 @@ updatePosString pos string
 -- incremented by 1.
 
 updatePosChar   :: SourcePos -> Char -> SourcePos
-updatePosChar (SourcePos name line column) c
+updatePosChar (SourcePos name line column index) c
     = case c of
-        '\n' -> SourcePos name (line+1) 1
-        '\t' -> SourcePos name line (column + 8 - ((column-1) `mod` 8))
-        _    -> SourcePos name line (column + 1)
+        '\n' -> SourcePos name (line+1) 1 (index+1)
+        '\t' -> SourcePos name line (column + 8 - ((column-1) `mod` 8)) (index+1)
+        _    -> SourcePos name line (column + 1) (index+1)
 
 instance Show SourcePos where
-  show (SourcePos name line column)
+  show (SourcePos name line column _index)
     | null name = showLineColumn
     | otherwise = "\"" ++ name ++ "\" " ++ showLineColumn
     where
