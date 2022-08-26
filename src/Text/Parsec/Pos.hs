@@ -29,12 +29,12 @@ import Data.Data (Data)
 import Data.Typeable (Typeable)
 
 -- < Source positions: a file name, a line and a column
--- upper left is (1,1)
+-- upper left is (1,1) or index Just 1
 
 type SourceName = String
 type Line       = Int
 type Column     = Int
-type Index      = Int
+type Index      = Maybe Int
 
 -- | The abstract data type @SourcePos@ represents source positions. It
 -- contains the name of the source (i.e. file name), a line number and
@@ -47,16 +47,16 @@ data SourcePos  = SourcePos SourceName !Line !Column !Index
 -- | Create a new 'SourcePos' with the given source name,
 -- line number and column number.
 
-newPos :: SourceName -> Line -> Column -> Index -> SourcePos
-newPos name line column index
-    = SourcePos name line column index
+newPos :: SourceName -> Line -> Column -> SourcePos
+newPos name line column
+    = SourcePos name line column Nothing
 
 -- | Create a new 'SourcePos' with the given source name,
 -- and line number and column number set to 1, the upper left.
 
 initialPos :: SourceName -> SourcePos
 initialPos name
-    = newPos name 1 1 1
+    = SourcePos name 1 1 (Just 1)
 
 -- | Extracts the name of the source from a source position.
 
@@ -75,7 +75,7 @@ sourceColumn (SourcePos _name _line column _index) = column
 
 -- | Extracts the index from a source position.
 
-sourceIndex :: SourcePos -> Column
+sourceIndex :: SourcePos -> Index
 sourceIndex (SourcePos _name _line _column index) = index
 
 -- | Increments the line number of a source position.
@@ -90,8 +90,8 @@ incSourceColumn (SourcePos name line column index) n = SourcePos name line (colu
 
 -- | Increments the index of a source position.
 
-incSourceIndex :: SourcePos -> Column -> SourcePos
-incSourceIndex (SourcePos name line column index) n = SourcePos name line column (index+n)
+incSourceIndex :: SourcePos -> Index -> SourcePos
+incSourceIndex (SourcePos name line column index) n = SourcePos name line column ((+) <$> index <*> n)
 
 -- | Set the name of the source.
 
@@ -110,7 +110,7 @@ setSourceColumn (SourcePos name line _column index) n = SourcePos name line n in
 
 -- | Set the index of a source position.
 
-setSourceIndex :: SourcePos -> Column -> SourcePos
+setSourceIndex :: SourcePos -> Index -> SourcePos
 setSourceIndex (SourcePos name line column _index) n = SourcePos name line column n
 
 -- | The expression @updatePosString pos s@ updates the source position
@@ -131,9 +131,9 @@ updatePosString pos string
 updatePosChar   :: SourcePos -> Char -> SourcePos
 updatePosChar (SourcePos name line column index) c
     = case c of
-        '\n' -> SourcePos name (line+1) 1 (index+1)
-        '\t' -> SourcePos name line (column + 8 - ((column-1) `mod` 8)) (index+1)
-        _    -> SourcePos name line (column + 1) (index+1)
+        '\n' -> SourcePos name (line+1) 1 (fmap (+1) index)
+        '\t' -> SourcePos name line (column + 8 - ((column-1) `mod` 8)) (fmap (+1) index)
+        _    -> SourcePos name line (column + 1) (fmap (+1) index)
 
 instance Show SourcePos where
   show (SourcePos name line column _index)
